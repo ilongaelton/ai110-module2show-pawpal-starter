@@ -1,15 +1,89 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% PawPal+ domain model and scheduler. Mirrors pawpal_system.py.
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+        +from_str(value) Priority
+        +label() str
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Recurrence {
+        <<enumeration>>
+        DAILY
+        WEEKLY
+        +from_str(value) Recurrence
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        +int id
+        +str title
+        +int duration_minutes
+        +Priority priority
+        +str fixed_start
+        +Recurrence recurrence
+        +int weekday
+        +is_fixed() bool
+        +fixed_start_minutes() int
+        +occurs_on(weekday) bool
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +str notes
+        +display() str
+    }
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +str day_start
+        +bool prefer_short_first
+    }
+
+    class ScheduledTask {
+        +Task task
+        +int start_minutes
+        +str reason
+        +end_minutes() int
+        +start() str
+        +end() str
+        +overlaps(other) bool
+    }
+
+    class SkippedTask {
+        +Task task
+        +str reason
+    }
+
+    class DailyPlan {
+        +Pet pet
+        +Owner owner
+        +list~ScheduledTask~ scheduled
+        +list~SkippedTask~ skipped
+        +total_scheduled_minutes() int
+        +remaining_minutes() int
+        +render() str
+    }
+
+    class Scheduler {
+        +build_plan(owner, pet, tasks, weekday) DailyPlan
+        -_next_free_slot(earliest, duration, busy) int
+    }
+
+    Task --> Priority : has
+    Task --> Recurrence : has
+    Owner "1" --> "1" Pet : cares for
+    Owner "1" --> "*" Task : owns
+    ScheduledTask --> Task : wraps
+    SkippedTask --> Task : wraps
+    DailyPlan o-- "*" ScheduledTask : scheduled
+    DailyPlan o-- "*" SkippedTask : skipped
+    DailyPlan --> Pet : for
+    DailyPlan --> Owner : for
+    Scheduler ..> DailyPlan : produces
+    Scheduler ..> Task : reads

@@ -46,13 +46,25 @@ pip install -r requirements.txt
 
 Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
 
+Generated with `DailyPlan.render()` (a 120-minute budget starting at 08:00, planned for a Monday):
+
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+Daily plan for Biscuit (Golden Retriever):
+  08:00 — Feeding (10 min) [priority: high]
+  08:10 — Morning walk (30 min) [priority: high]
+  08:40 — Enrichment play (20 min) [priority: medium]
+  10:00 — Vet checkup (45 min) [priority: high]
+
+Skipped:
+  - Bath: not scheduled for this day
+  - Grooming: ran out of time (15 min left, needs 25)
+
+Used 105 of 120 min (15 min free).
 ```
+
+Note how the scheduler keeps the high/medium tasks, routes the flexible tasks
+around the fixed 10:00 vet appointment, skips the weekly bath (wrong day), and
+drops the low-priority grooming once the time budget runs out.
 
 ## 🧪 Testing PawPal+
 
@@ -67,28 +79,32 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+$ pytest -q
+.......................                                                  [100%]
+23 passed in 0.06s
 ```
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+All scheduling lives in `pawpal_system.py` (`Scheduler.build_plan`).
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.build_plan` (sort keys) | Flexible tasks sorted by priority (high→low), then by duration (shorter first when `Owner.prefer_short_first`), then insertion order for stability. |
+| Filtering | `Scheduler.build_plan` (budget check) | A task is skipped when it doesn't fit the owner's remaining `available_minutes`; the reason ("ran out of time…") is recorded on the `DailyPlan.skipped` list. |
+| Conflict handling | `ScheduledTask.overlaps`, `Scheduler._next_free_slot` | Fixed appointments are placed first; an overlapping lower-priority appointment is dropped, and flexible tasks are routed into the next free gap so nothing overlaps. |
+| Recurring tasks | `Task.occurs_on`, `Recurrence` enum | `daily` tasks are always candidates; `weekly` tasks only appear on their `weekday`. Pass `weekday=` to `build_plan` to filter for a given day. |
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+Run `streamlit run app.py`, then:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+1. **Enter owner & pet info** — type the owner's name and the pet's name, species, and breed (e.g. Jordan / Mochi, a Shiba Inu).
+2. **Set the day's constraints** — choose a time budget (e.g. 120 min), a start time (08:00), and the day of week to plan for, then decide whether ties should favor shorter tasks first.
+3. **Add tasks** — for each task give a title, duration, and priority. Optionally set a fixed time for appointments (e.g. a 10:00 vet visit) or mark a task as weekly on a specific day.
+4. **Click "Generate schedule"** — PawPal+ sorts by priority, places appointments, fills the remaining budget, and shows the timeline with a one-line reason under each task.
+5. **Review the results** — see time used vs. free, a "Skipped" list explaining what didn't fit and why, and a plain-text plan you can copy straight into this README.
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+**Screenshot**:
+
+![PawPal+ generating a daily plan](diagrams/screenshot.png)
